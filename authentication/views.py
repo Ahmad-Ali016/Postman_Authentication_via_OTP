@@ -8,6 +8,8 @@ import random
 from authentication.models import OTP
 
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.conf import settings
+from django.core.mail import send_mail
 
 
 # Create your views here.
@@ -36,17 +38,28 @@ class LoginView(APIView):
             # 3. Save OTP to database (overwrite if one already exists for this user)
             OTP.objects.update_or_create(user=user, defaults={'code': otp_code})
 
-            # 4. Print to Terminal (Instead of sending email)
-            print("\n" + "=" * 30)
-            print(f"DEBUG OTP FOR {username}: {otp_code}")
-            print("=" * 30 + "\n")
+            # # 4. Print to Terminal (Instead of sending email)
+            # print("\n" + "=" * 30)
+            # print(f"DEBUG OTP FOR {username}: {otp_code}")
+            # print("=" * 30 + "\n")
+
+            # --- UPDATED: SEND ACTUAL EMAIL ---
+            subject = 'Your Verification Code'
+            message = f'Hello {user.username},\n\nYour 6-digit verification code is: {otp_code}'
+            email_from = settings.EMAIL_HOST_USER
+            recipient_list = [user.email]
+
+            try:
+                send_mail(subject, message, email_from, recipient_list)
+            except Exception as e:
+                return Response({"error": "Failed to send email. Check SMTP settings."},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             return Response({
-                "message": "Login successful. Please enter the OTP sent to your terminal."
+                "message": f"Login successful. OTP has been sent to {user.email}."
             }, status=status.HTTP_200_OK)
 
         return Response({"error": "Invalid username or password"}, status=status.HTTP_401_UNAUTHORIZED)
-
 
 class VerifyOTPView(APIView):
     def post(self, request):
