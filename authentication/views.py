@@ -7,6 +7,8 @@ from django.contrib.auth import authenticate
 import random
 from authentication.models import OTP
 
+from rest_framework_simplejwt.tokens import RefreshToken
+
 
 # Create your views here.
 
@@ -44,3 +46,33 @@ class LoginView(APIView):
             }, status=status.HTTP_200_OK)
 
         return Response({"error": "Invalid username or password"}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+class VerifyOTPView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        otp_code = request.data.get('otp')
+
+        try:
+            # 1. Find the OTP record for this user
+            otp_record = OTP.objects.get(user__username=username, code=otp_code)
+
+            # 2. If found, generate JWT tokens
+            user = otp_record.user
+            refresh = RefreshToken.for_user(user)
+
+            # 3. Delete the OTP so it can't be used again
+            otp_record.delete()
+
+            return Response({
+                "message": "OTP Verified successfully!",
+                "tokens": {
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                }
+            }, status=status.HTTP_200_OK)
+
+        except OTP.DoesNotExist:
+            return Response({
+                "error": "Invalid OTP or Username"
+            }, status=status.HTTP_400_BAD_REQUEST)
