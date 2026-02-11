@@ -3,6 +3,11 @@ from authentication.serializers import SignupSerializer
 from rest_framework.response import Response
 from rest_framework import status
 
+from django.contrib.auth import authenticate
+import random
+from authentication.models import OTP
+
+
 # Create your views here.
 
 class SignupView(APIView):
@@ -12,3 +17,30 @@ class SignupView(APIView):
             serializer.save()
             return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LoginView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+
+        # 1. Verify credentials
+        user = authenticate(username=username, password=password)
+
+        if user is not None:
+            # 2. Generate a random 6-digit code
+            otp_code = str(random.randint(100000, 999999))
+
+            # 3. Save OTP to database (overwrite if one already exists for this user)
+            OTP.objects.update_or_create(user=user, defaults={'code': otp_code})
+
+            # 4. Print to Terminal (Instead of sending email)
+            print("\n" + "=" * 30)
+            print(f"DEBUG OTP FOR {username}: {otp_code}")
+            print("=" * 30 + "\n")
+
+            return Response({
+                "message": "Login successful. Please enter the OTP sent to your terminal."
+            }, status=status.HTTP_200_OK)
+
+        return Response({"error": "Invalid username or password"}, status=status.HTTP_401_UNAUTHORIZED)

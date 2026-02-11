@@ -5,9 +5,10 @@ from django.contrib.auth.models import User
 
 # This stores the extra info
 class Profile(models.Model):
+
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    age = models.IntegerField()
-    phone = models.CharField(max_length=15)
+    age = models.IntegerField(null=True, blank=True)  # Added null/blank
+    phone = models.CharField(max_length=15, null=True, blank=True)  # Added null/blank
 
 class OTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
